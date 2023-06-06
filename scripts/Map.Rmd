@@ -1,0 +1,352 @@
+---
+title: "Map"
+author: "Anna Talucci"
+date: "2023-05-26"
+output: html_document
+---
+
+
+# Overview
+
+# Packages
+```{r}
+library(sf)
+library(terra)
+library(tidyverse)
+library(gdalUtilities)
+library(topmodel)
+library(tidyterra)
+library(ggspatial)
+library(cowplot)
+```
+
+# Projections 
+
+Russia Equal area projection
+
+```{r}
+ee_proj = "+proj=aea +lat_1=50 +lat_2=70 +lat_0=56 +lon_0=100 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs "
+```
+
+```{r}
+laea <- "+proj=laea +lat_0=90 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs" 
+```
+
+# SHP data
+```{r}
+
+pts = st_read("../data/points/cn_tr1_ee_pt.shp", 'cn_tr1_ee_pt')
+```
+# Raster Data
+
+## UAV
+
+```{r}
+uav <- rast("../data/raster/CYN_TR1_Fl015.tif")
+```
+
+```{r}
+uav
+```
+
+# Landsat
+```{r}
+ls <- rast("../data/raster/RGBimageLandsat.tif")
+```
+
+```{r}
+ls
+```
+
+# Sentinel
+```{r}
+sentinel <- rast("../data/raster/RGBimageSentinel.tif")
+```
+
+```{r}
+sentinel
+```
+
+# Modis
+```{r}
+modis <- rast("../data/raster/RGBimageModis.tif")
+```
+
+```{r}
+modis
+```
+
+# Reproject
+```{r eval=FALSE, include=FALSE}
+uav = terra::project(uav, "EPSG:4326")
+```
+
+```{r}
+ls1 = terra::project(ls, '+proj=aea +lat_0=56 +lon_0=100 +lat_1=50 +lat_2=70 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs')
+```
+
+```{r}
+modis1 = terra::project(modis, '+proj=aea +lat_0=56 +lon_0=100 +lat_1=50 +lat_2=70 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs')
+```
+
+# Basic plots
+## UAV
+```{r eval=FALSE, include=FALSE}
+plotRGB(uav,
+        r = 1, g = 2, b = 3)
+```
+
+## Landsat
+```{r eval=FALSE, include=FALSE}
+plotRGB(ls,
+        r = 1, g = 2, b = 3, stretch='lin')
+```
+
+# Sentinel
+```{r eval=FALSE, include=FALSE}
+plotRGB(sentinel,
+        r = 1, g = 2, b = 3, stretch='lin')
+```
+
+# Modis
+
+```{r eval=FALSE, include=FALSE}
+plotRGB(modis,
+        r = 1, g = 2, b = 3, stretch='lin')
+```
+
+# GGPLOT2
+## UAV
+```{r}
+ggplot() +
+  geom_spatraster_rgb(data = uav) +
+  # You can use coord_sf
+  coord_sf(crs = '+proj=aea +lat_0=56 +lon_0=100 +lat_1=50 +lat_2=70 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs',  xlim = c(161.472, 161.478), ylim = c(68.781, 68.785), expand = TRUE)
+```
+
+
+```{r}
+
+(zoom <- data.frame(xmin = 2141201.50, xmax = 2141258.97, ymin = 2497406.67, ymax = 2497450.93)) #Replace numeric values
+
+fieldPts = data.frame(xmin=2141125, ymin=2497340, xmax=2141260, ymax=2497546)
+```
+
+
+
+```{r}
+ggplot() +
+  geom_spatraster_rgb(data = uav) +
+  # You can use coord_sf
+  coord_sf(crs = '+proj=aea +lat_0=56 +lon_0=100 +lat_1=50 +lat_2=70 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs') +
+  geom_rect(data = fieldPts, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), alpha = 0, colour = "#000080", size = 1.5, linetype = 1) 
+```
+
+```{r}
+e <- ext(2141125, 2141260, 2497340, 2497546)
+# crop landsat by the extent
+uavcrop <- crop(uav, e)
+```
+
+```{r}
+( uavField = ggplot() +
+  geom_spatraster_rgb(data = uavcrop) +
+  # You can use coord_sf
+   annotation_scale(location = "bl", width_hint = 0.25, text_size = 12, text_face = "bold", text_family = "sans", text_col = "black") +
+  coord_sf(crs = '+proj=aea +lat_0=56 +lon_0=100 +lat_1=50 +lat_2=70 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs') + 
+   theme(plot.margin=grid::unit(c(0,0,0,0), "mm"))
+  
+)
+```
+
+```{r}
+ggsave("../figures/UAVFieldRGB.png", plot = uavField, dpi = 600)
+```
+### Super zoom
+```{r}
+ezoom <- ext(2141202, 2141258, 2497406, 2497450)
+# crop landsat by the extent
+uavzoom <- crop(uav, ezoom)
+```
+
+```{r}
+( uavzoom = ggplot() +
+  geom_spatraster_rgb(data = uavzoom) +
+  # You can use coord_sf
+   annotation_scale(location = "bl", width_hint = 0.25, text_size = 12, text_face = "bold", text_family = "sans", text_col = "black") +
+  coord_sf(crs = '+proj=aea +lat_0=56 +lon_0=100 +lat_1=50 +lat_2=70 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs') +
+   theme(plot.margin=grid::unit(c(0,0,0,0), "mm"))
+)
+```
+
+
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/UAVZoomRGB.png", plot = uavzoom, dpi = 600)
+```
+
+### Zoom2
+```{r}
+ezoom2 <- ext(2141215, 2141245, 2497420, 2497435)
+# crop landsat by the extent
+uavzoom2 <- crop(uav, ezoom2)
+```
+annotation_scale(location = "bl", width_hint = 0.25, text_size = 6, text_face = "plain", text_family = "sans", text_col = "white", pad_x=unit(3,"mm"), pad_y=unit(3,"mm")) +
+```{r}
+( uavzoom2 = ggplot() +
+  geom_spatraster_rgb(data = uavzoom2) +
+  # You can use coord_sf
+   annotation_scale(location = "bl", width_hint = 0.25, text_size = 6, text_face = "bold", text_family = "sans", text_col = "black", pad_x=unit(4,"mm"), pad_y=unit(3,"mm")) +
+  coord_sf(crs = '+proj=aea +lat_0=56 +lon_0=100 +lat_1=50 +lat_2=70 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs') +
+   theme(plot.margin=grid::unit(c(0,0,0,0), "mm")) +
+    theme_map()
+)
+```
+
+
+## landsat
+```{r}
+ls1
+```
+
+(xmin=2141125,  xmax=2141260, ymin=2497340, ymax=2497546)
+```{r}
+els <- ext(2140142, 2145134, 2495891, 2499251)
+# crop landsat by the extent
+lscrop <- crop(ls1, els)
+```
+
+```{r}
+(landsat = ggplot() +
+  geom_spatraster_rgb(data = lscrop, max_col_value=70) +
+  # You can use coord_sf
+   annotation_scale(location = "bl", width_hint = 0.25, text_size = 12, text_face = "bold", text_family = "sans", text_col = "black") +
+  coord_sf(crs = '+proj=aea +lat_0=56 +lon_0=100 +lat_1=50 +lat_2=70 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs') +
+  geom_rect(data = fieldPts, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), alpha = 0, colour = "red", size = .5, linetype = 1) +
+   theme(plot.margin=grid::unit(c(0,0,0,0), "mm"))
+)
+```
+
+
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/LandsatRGB.png", plot = landsat, dpi = 600)
+```
+
+### Landsat2
+```{r}
+els2 <- ext(2140242, 2143134, 2495891, 2499251)
+# crop landsat by the extent
+lscrop2 <- crop(ls1, els2)
+```
+
+```{r}
+(landsat2 = ggplot() +
+  geom_spatraster_rgb(data = lscrop2, max_col_value=70) +
+  # You can use coord_sf
+   annotation_scale(location = "bl", width_hint = 0.25, text_size = 6, text_face = "plain", text_family = "sans", text_col = "white", pad_x=unit(3,"mm"), pad_y=unit(3,"mm")) +
+  coord_sf(crs = '+proj=aea +lat_0=56 +lon_0=100 +lat_1=50 +lat_2=70 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs') +
+  geom_rect(data = zoom, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), alpha = 0, colour = "yellow", size = .5, linetype = 1) +
+   theme(plot.margin=grid::unit(c(0,0,0,0), "mm")) +
+   theme(axis.text.y = element_text(angle=45, size =4), 
+         axis.text.x = element_text(size =4)) 
+
+)
+```
+## Sentinel
+```{r}
+ggplot() +
+  geom_spatraster_rgb(data = sentinel, max_col_value=77) +
+  # You can use coord_sf
+  coord_sf(crs = 4326)
+```
+
+## Modis
+
+
+```{r}
+modis1
+```
+
+(xmin=2141125,  xmax=2141260, ymin=2497340, ymax=2497546)
+```{r}
+emodis <- ext(2140142, 2145134, 2495891, 2499251)
+# crop landsat by the extent
+modiscrop <- crop(modis1, emodis)
+```
+
+```{r}
+(modis_plot = ggplot() +
+  geom_spatraster_rgb(data = modiscrop, max_col_value=70) +
+  # You can use coord_sf
+   annotation_scale(location = "bl", width_hint = 0.25, text_size = 12, text_face = "bold", text_family = "sans", text_col = "black") +
+  coord_sf(crs = '+proj=aea +lat_0=56 +lon_0=100 +lat_1=50 +lat_2=70 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs') +
+  geom_rect(data = fieldPts, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), alpha = 0, colour = "red", size = .5, linetype = 1) +
+   theme(plot.margin=grid::unit(c(0,0,0,0), "mm"))
+)
+```
+
+```{r eval=FALSE, include=FALSE}
+ggsave("../figures/ModisRGB.png", plot = modis_plot, dpi = 600)
+```
+
+### Modis2
+```{r}
+emodis2 <- ext(2140242, 2143134, 2495991, 2499351)
+# crop landsat by the extent
+modiscrop2 <- crop(modis1, emodis2)
+```
+
+
+```{r}
+(modis_plot2 = ggplot() +
+  geom_spatraster_rgb(data = modiscrop2, max_col_value=70) +
+  # You can use coord_sf
+   annotation_scale(location = "bl", width_hint = 0.25, text_size = 6, text_face = "plain", text_family = "sans", text_col = "white", pad_x=unit(3,"mm"), pad_y=unit(3,"mm")) +
+  coord_sf(crs = '+proj=aea +lat_0=56 +lon_0=100 +lat_1=50 +lat_2=70 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs') +
+  geom_rect(data = zoom, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), alpha = 0, colour = "yellow", size = .5, linetype = 1) +
+   theme(plot.margin=grid::unit(c(0,0,0,0), "mm"))  +
+   theme(axis.text.y = element_text(angle=45, size =4), 
+         axis.text.x = element_text(size =4)) 
+)
+```
+
+
+
+# Combine
+width = 3, height = 3.
+width = 2.2, height = 3.2,
+width = 6, height = 3.5
+width = 2.2, height = 3.2,
+```{r}
+
+( combinePlots = cowplot::plot_grid(uavzoom, uavField, landsat, modis_plot, ncol=2, labels = 'AUTO') )
+
+```
+
+```{r}
+ggsave("../figures/ComboPlots.png", plot = combinePlots, dpi = 600)
+```
+
+
+# Combine 2
+```{r}
+
+( combinePlots2 = cowplot::plot_grid(landsat2, modis_plot2, ncol=2) )
+
+```
+
+```{r}
+
+( combinePlots3 = cowplot::plot_grid(uavzoom2, ncol=1) )
+
+```
+
+```{r fig.height=5, fig.width=6}
+( combinePlots4 = cowplot::plot_grid(combinePlots3, combinePlots2, nrow=1) +
+    draw_label("A", x = 0.05, y = .67, fontfamily = "sans", fontface = "bold", color = "black", size = 10) +
+   draw_label("B", x = 0.52, y = .67, fontfamily = "sans", fontface = "bold", color = "black", size = 10) +
+   draw_label("C", x = .77, y = .67, fontfamily = "sans", fontface = "bold", color = "black", size = 10) ) 
+```
+
+```{r}
+ggsave("../figures/ComboPlots4.png", plot = combinePlots4, width=6, height = 5, units='in', dpi = 600, bg='white')
+```
